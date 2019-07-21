@@ -1,4 +1,4 @@
--module(tracelog_handler).
+-module(tracelog).
 -export([adding_handler/1, removing_handler/1, log/2]).
 
 adding_handler(Config = #{}) ->
@@ -25,7 +25,9 @@ log(#{meta := Meta, msg := {report, Msg}},
                 #{K := Start} ->
                     Span = span_name(Ns, Msg, Meta),
                     put({?MODULE, command, Span}, {seen, Stop}),
-                    ocp:with_child_span(Span);
+                    ocp:with_child_span(Span),
+                    Annotation = oc_span:annotation(<<"Metadata">>, Msg),
+                    ocp:add_time_event(Annotation)
                 #{K := End} ->
                     Span = span_name(Ns, Msg, Meta),
                     case get({?MODULE, command, Span}) of
