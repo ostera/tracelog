@@ -25,9 +25,7 @@ log(#{meta := Meta, msg := {report, Msg}},
                 #{K := Start} ->
                     Span = span_name(Ns, Msg, Meta),
                     put({?MODULE, command, Span}, {seen, Stop}),
-                    ocp:with_child_span(Span),
-                    Annotation = oc_span:annotation(<<"Metadata">>, Msg),
-                    ocp:add_time_event(Annotation);
+                    ocp:with_child_span(Span);
                 #{K := End} ->
                     Span = span_name(Ns, Msg, Meta),
                     case get({?MODULE, command, Span}) of
