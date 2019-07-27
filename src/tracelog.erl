@@ -25,7 +25,10 @@ log(#{meta := Meta, msg := {report, Msg}},
                 #{K := Start} ->
                     Span = span_name(Ns, Msg, Meta),
                     put({?MODULE, command, Span}, {seen, Stop}),
-                    ocp:with_child_span(Span);
+                    Child = ocp:with_child_span(Span),
+                    NewTags = prepare_tags(Msg),
+                    ocp:put_attributes(NewTags),
+                    Child;
                 #{K := End} ->
                     Span = span_name(Ns, Msg, Meta),
                     case get({?MODULE, command, Span}) of
@@ -43,6 +46,10 @@ log(#{meta := Meta, msg := {report, Msg}},
     end;
 log(_, _) ->
     ignore.
+
+prepare_tags(Tags) when is_map(Tags) ->
+  maps:fold(fun (K, V, Acc) -> maps:put(to_bin(K), to_bin(V), Acc)
+            end, #{}, Tags).
 
 matching_keywords([], _, _) ->
     undefined;
@@ -62,6 +69,8 @@ span_name([H|T], Msg, Meta) ->
         _ -> span_name(T, Msg, Meta)
     end.
 
+to_bin(Map) when is_map(Map) -> jsx:encode(Map);
+to_bin(Fun) when is_function(Fun) -> to_bin(erlang:fun_info_mfa(Fun));
 to_bin({M,F,A0}) ->
     A = if is_integer(A0) -> A0;
            is_list(A0) -> length(A0)
@@ -72,4 +81,7 @@ to_bin({M,F,A0}) ->
 to_bin(Str) when is_list(Str) ->
     unicode:characters_to_binary(Str);
 to_bin(Atom) when is_atom(Atom) ->
-    atom_to_binary(Atom, utf8).
+    atom_to_binary(Atom, utf8);
+to_bin(Num) when is_integer(Num) ->
+    integer_to_binary(Num);
+to_bin(Bin) when is_binary(Bin) -> Bin.
